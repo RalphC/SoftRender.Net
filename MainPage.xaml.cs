@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using SharpDX;
+﻿using SharpDX;
+using System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media;
@@ -15,41 +15,42 @@ namespace SoftRender.Net
     public sealed partial class MainPage : Page
     {
         private Device device;
-        List<Mesh> meshes = new List<Mesh>();
+        private Mesh[] meshes;
         Camera camera = new Camera();
+        private AssetManager assetManager = new AssetManager();
+        private DateTime previousDateTime;
 
-
-        private void Page_Loaded(object sender, RoutedEventArgs e)
+        private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
             WriteableBitmap bmp = new WriteableBitmap(640, 480);
 
             device = new Device(bmp);
             frontBuffer.Source = bmp;
 
-            var mesh = new Mesh("Cube", 8, 12);
-            meshes.Add(mesh);
-            mesh.Vertices[0] = new Vector3(-1, 1, 1);
-            mesh.Vertices[1] = new Vector3(1, 1, 1);
-            mesh.Vertices[2] = new Vector3(-1, -1, 1);
-            mesh.Vertices[3] = new Vector3(1, -1, 1);
-            mesh.Vertices[4] = new Vector3(-1, 1, -1);
-            mesh.Vertices[5] = new Vector3(1, 1, -1);
-            mesh.Vertices[6] = new Vector3(1, -1, -1);
-            mesh.Vertices[7] = new Vector3(-1, -1, -1);
+            meshes = await assetManager.LoadJSONFileAsync("monkey.babylon");
+            //var mesh = new Mesh("Cube", 8, 12);
+            //mesh.vertices[0] = new vector3(-1, 1, 1);
+            //mesh.vertices[1] = new vector3(1, 1, 1);
+            //mesh.vertices[2] = new vector3(-1, -1, 1);
+            //mesh.vertices[3] = new vector3(1, -1, 1);
+            //mesh.vertices[4] = new vector3(-1, 1, -1);
+            //mesh.vertices[5] = new vector3(1, 1, -1);
+            //mesh.vertices[6] = new vector3(1, -1, -1);
+            //mesh.vertices[7] = new vector3(-1, -1, -1);
 
-            mesh.Faces[0] = new Face { A = 0, B = 1, C = 2 };
-            mesh.Faces[1] = new Face { A = 1, B = 2, C = 3 };
-            mesh.Faces[2] = new Face { A = 1, B = 3, C = 6 };
-            mesh.Faces[3] = new Face { A = 1, B = 5, C = 6 };
-            mesh.Faces[4] = new Face { A = 0, B = 1, C = 4 };
-            mesh.Faces[5] = new Face { A = 1, B = 4, C = 5 };
+            //mesh.faces[0] = new face { a = 0, b = 1, c = 2 };
+            //mesh.faces[1] = new face { a = 1, b = 2, c = 3 };
+            //mesh.faces[2] = new face { a = 1, b = 3, c = 6 };
+            //mesh.faces[3] = new face { a = 1, b = 5, c = 6 };
+            //mesh.faces[4] = new face { a = 0, b = 1, c = 4 };
+            //mesh.faces[5] = new face { a = 1, b = 4, c = 5 };
 
-            mesh.Faces[6] = new Face { A = 2, B = 3, C = 7 };
-            mesh.Faces[7] = new Face { A = 3, B = 6, C = 7 };
-            mesh.Faces[8] = new Face { A = 0, B = 2, C = 7 };
-            mesh.Faces[9] = new Face { A = 0, B = 4, C = 7 };
-            mesh.Faces[10] = new Face { A = 4, B = 5, C = 6 };
-            mesh.Faces[11] = new Face { A = 4, B = 6, C = 7 };
+            //mesh.faces[6] = new face { a = 2, b = 3, c = 7 };
+            //mesh.faces[7] = new face { a = 3, b = 6, c = 7 };
+            //mesh.faces[8] = new face { a = 0, b = 2, c = 7 };
+            //mesh.faces[9] = new face { a = 0, b = 4, c = 7 };
+            //mesh.faces[10] = new face { a = 4, b = 5, c = 6 };
+            //mesh.faces[11] = new face { a = 4, b = 6, c = 7 };
 
             camera.Position = new Vector3(0, 0, 10.0f);
             camera.Target = Vector3.Zero;
@@ -59,14 +60,18 @@ namespace SoftRender.Net
 
         void CompositionTarget_Rendering(object sender, object e)
         {
+            var now = DateTime.Now;
+            var currentFps = 1000f / (now - previousDateTime).TotalMilliseconds;
+            previousDateTime = now;
+            fps.Text = string.Format("{0:0.00} fps", currentFps);
+
             device.Clear(0, 0, 0, 255);
 
             foreach (var mesh in meshes)
             {
                 mesh.Rotation = new Vector3(mesh.Rotation.X + 0.01f, mesh.Rotation.Y + 0.01f, mesh.Rotation.Z);
-                device.Render(camera, mesh);
             }
-
+            device.Render(camera, meshes);
             device.Present();
         }
 

@@ -8,8 +8,10 @@
     mc:Ignorable="d"
     Loaded="Page_Loaded"
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
-    
+
     <Grid Background="{StaticResource ApplicationPageBackgroundThemeBrush}">
         <Image x:Name="frontBuffer"/>
+        <TextBlock Name="fps" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Foreground="White"/>
+        <TextBlock Name="averageFps" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="10" Foreground="White"></TextBlock>
     </Grid>
 </Page>
