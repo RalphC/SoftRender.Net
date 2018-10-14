@@ -1,6 +1,5 @@
-﻿using System;
-using System.Diagnostics;
-using SharpDX;
+﻿using SharpDX;
+using System;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading.Tasks;
 using Windows.UI.Xaml.Media.Imaging;
@@ -113,7 +112,8 @@ namespace SoftRender.Net
             {
                 Coordinates = new Vector3(x, y, point.Z),
                 Normal = normal3DWorld,
-                WorldCoordinates = point3DWorld
+                WorldCoordinates = point3DWorld,
+                TextureCoordinates = vert.TextureCoordinates
             };
         }
 
@@ -151,7 +151,7 @@ namespace SoftRender.Net
             }
         }
 
-        public void ProcessScanLine(ScanLineData data, Vertex va, Vertex vb, Vertex vc, Vertex vd, Color4 color)
+        public void ProcessScanLine(ScanLineData data, Vertex va, Vertex vb, Vertex vc, Vertex vd, Color4 color, Texture texture)
         {
             var pa = va.Coordinates;
             var pb = vb.Coordinates;
@@ -170,19 +170,31 @@ namespace SoftRender.Net
             var snl = MathLib.Interpolate(data.NDotla, data.NDotlb, gradient1);
             var enl = MathLib.Interpolate(data.NDotlc, data.NDotld, gradient2);
 
+            var su = MathLib.Interpolate(data.ua, data.ub, gradient1);
+            var eu = MathLib.Interpolate(data.uc, data.ud, gradient2);
+            var sv = MathLib.Interpolate(data.va, data.vb, gradient1);
+            var ev = MathLib.Interpolate(data.vc, data.vd, gradient2);
+
             for (int index = sx; index < ex; index++)
             {
                 var grad = (index - sx) / (float)(ex - sx);
                 var z = MathLib.Interpolate(z1, z2, grad);
                 var ndotl = MathLib.Interpolate(snl, enl, grad);
-                //var ndotl = data.NDotla;
-                //Debug.WriteLine("normal X light = {0}", ndotl);
 
-                DrawPoint(index, data.CurrentY, z, new Color4(color.Red * ndotl, color.Green * ndotl, color.Blue * ndotl, color.Alpha));
+                var u = MathLib.Interpolate(su, eu, grad);
+                var v = MathLib.Interpolate(sv, ev, grad);
+
+                var textureColor = texture?.Map(u, v) ?? new Color4(1, 1, 1, 1);
+
+                DrawPoint(index, data.CurrentY, z, new Color4(
+                    color.Red * ndotl * textureColor.Red,
+                    color.Green * ndotl * textureColor.Green,
+                    color.Blue * ndotl * textureColor.Blue,
+                    color.Alpha * textureColor.Alpha));
             }
         }
 
-        public void DrawTriangle(Vertex v0, Vertex v1, Vertex v2, Color4 color)
+        public void DrawTriangle(Vertex v0, Vertex v1, Vertex v2, Color4 color, Texture texture)
         {
             if (v0.Coordinates.Y > v1.Coordinates.Y)
             {
@@ -256,7 +268,18 @@ namespace SoftRender.Net
                         data.NDotlb = nl2;
                         data.NDotlc = nl0;
                         data.NDotld = nl1;
-                        ProcessScanLine(data, v0, v2, v0, v1, color);
+
+                        data.ua = v0.TextureCoordinates.X;
+                        data.ub = v2.TextureCoordinates.X;
+                        data.uc = v0.TextureCoordinates.X;
+                        data.ud = v1.TextureCoordinates.X;
+
+                        data.va = v0.TextureCoordinates.Y;
+                        data.vb = v2.TextureCoordinates.Y;
+                        data.vc = v0.TextureCoordinates.Y;
+                        data.vd = v1.TextureCoordinates.Y;
+
+                        ProcessScanLine(data, v0, v2, v0, v1, color, texture);
                     }
                     else
                     {
@@ -264,7 +287,18 @@ namespace SoftRender.Net
                         data.NDotlb = nl2;
                         data.NDotlc = nl1;
                         data.NDotld = nl2;
-                        ProcessScanLine(data, v0, v2, v1, v2, color);
+
+                        data.ua = v0.TextureCoordinates.X;
+                        data.ub = v2.TextureCoordinates.X;
+                        data.uc = v1.TextureCoordinates.X;
+                        data.ud = v2.TextureCoordinates.X;
+
+                        data.va = v0.TextureCoordinates.Y;
+                        data.vb = v2.TextureCoordinates.Y;
+                        data.vc = v1.TextureCoordinates.Y;
+                        data.vd = v2.TextureCoordinates.Y;
+
+                        ProcessScanLine(data, v0, v2, v1, v2, color, texture);
                     }
                 }
             }
@@ -279,7 +313,18 @@ namespace SoftRender.Net
                         data.NDotlb = nl1;
                         data.NDotlc = nl0;
                         data.NDotld = nl2;
-                        ProcessScanLine(data, v0, v1, v0, v2, color);
+
+                        data.ua = v0.TextureCoordinates.X;
+                        data.ub = v1.TextureCoordinates.X;
+                        data.uc = v0.TextureCoordinates.X;
+                        data.ud = v2.TextureCoordinates.X;
+
+                        data.va = v0.TextureCoordinates.Y;
+                        data.vb = v1.TextureCoordinates.Y;
+                        data.vc = v0.TextureCoordinates.Y;
+                        data.vd = v2.TextureCoordinates.Y;
+
+                        ProcessScanLine(data, v0, v1, v0, v2, color, texture);
                     }
                     else
                     {
@@ -287,7 +332,18 @@ namespace SoftRender.Net
                         data.NDotlb = nl2;
                         data.NDotlc = nl0;
                         data.NDotld = nl2;
-                        ProcessScanLine(data, v1, v2, v0, v2, color);
+
+                        data.ua = v1.TextureCoordinates.X;
+                        data.ub = v2.TextureCoordinates.X;
+                        data.uc = v0.TextureCoordinates.X;
+                        data.ud = v2.TextureCoordinates.X;
+
+                        data.va = v1.TextureCoordinates.Y;
+                        data.vb = v2.TextureCoordinates.Y;
+                        data.vc = v0.TextureCoordinates.Y;
+                        data.vd = v2.TextureCoordinates.Y;
+
+                        ProcessScanLine(data, v1, v2, v0, v2, color, texture);
                     }
                 }
             }
@@ -305,13 +361,22 @@ namespace SoftRender.Net
                 var worldMatrix = Matrix.RotationYawPitchRoll(mesh.Rotation.Y, mesh.Rotation.X, mesh.Rotation.Z) *
                                   Matrix.Translation(mesh.Position);
 
-                var transformMatrix = worldMatrix * viewMatrix * projectionMatrix;
+                var worldView = worldMatrix * viewMatrix;
+                var transformMatrix = worldView * projectionMatrix;
 
                 Parallel.For(0, mesh.Faces.Length, faceIndex =>
                 {
                     //foreach (var face in mesh.Faces)
                     {
                         var face = mesh.Faces[faceIndex];
+
+                        var transformedNormal = Vector3.TransformNormal(face.Normal, worldView);
+
+                        if (transformedNormal.Z >= 0)
+                        {
+                            return;
+                        }
+
                         var vertexA = mesh.Vertices[face.A];
                         var vertexB = mesh.Vertices[face.B];
                         var vertexC = mesh.Vertices[face.C];
@@ -320,7 +385,7 @@ namespace SoftRender.Net
                         var pixelB = Project(vertexB, transformMatrix, worldMatrix);
                         var pixelC = Project(vertexC, transformMatrix, worldMatrix);
 
-                        DrawTriangle(pixelA, pixelB, pixelC, MeshColor);
+                        DrawTriangle(pixelA, pixelB, pixelC, MeshColor, mesh.Texture);
                         faceIndex++;
                     }
                 });

@@ -10,9 +10,21 @@ namespace SoftRender.Net
         public async Task<Mesh[]> LoadJSONFileAsync(string fileName)
         {
             var meshes = new List<Mesh>();
+            var materials = new Dictionary<string, Material>();
             var file = await Windows.ApplicationModel.Package.Current.InstalledLocation.GetFileAsync(fileName);
             var data = await Windows.Storage.FileIO.ReadTextAsync(file);
             dynamic jsonObject = Newtonsoft.Json.JsonConvert.DeserializeObject(data);
+
+            for (var materialIndex = 0; materialIndex < jsonObject.materials.Count; materialIndex++)
+            {
+                var material = new Material();
+                material.Name = jsonObject.materials[materialIndex].name.Value;
+                material.ID = jsonObject.materials[materialIndex].id.Value;
+                if (jsonObject.materials[materialIndex].diffuseTexture != null)
+                    material.DiffuseTextureName = jsonObject.materials[materialIndex].diffuseTexture.name.Value;
+
+                materials.Add(material.ID, material);
+            }
 
             for (var meshIndex = 0; meshIndex < jsonObject.meshes.Count; meshIndex++)
             {
@@ -49,6 +61,13 @@ namespace SoftRender.Net
                     var ny = (float)verticesArray[index * verticesStep + 4].Value;
                     var nz = (float)verticesArray[index * verticesStep + 5].Value;
                     mesh.Vertices[index] = new Vertex { Coordinates = new Vector3(x, y, z), Normal = new Vector3(nx, ny, nz) };
+
+                    if (uvCount > 0)
+                    {
+                        var u = (float)verticesArray[index * verticesStep + 6].Value;
+                        var v = (float)verticesArray[index * verticesStep + 7].Value;
+                        mesh.Vertices[index].TextureCoordinates = new Vector2(u, v);
+                    }
                 }
 
                 for (var index = 0; index < facesCount; index++)
@@ -61,6 +80,16 @@ namespace SoftRender.Net
 
                 var position = jsonObject.meshes[meshIndex].position;
                 mesh.Position = new Vector3((float)position[0].Value, (float)position[1].Value, (float)position[2].Value);
+
+                if (uvCount > 0)
+                {
+                    var meshTextureID = jsonObject.meshes[meshIndex].materialId.Value;
+                    var meshTextureName = materials[meshTextureID].DiffuseTextureName;
+                    mesh.Texture = new Texture(meshTextureName, 512, 512);
+                }
+
+                mesh.ComputeFacesNormals();
+
                 meshes.Add(mesh);
             }
             return meshes.ToArray();
